@@ -11,14 +11,16 @@ from pydantic import BaseModel, Field, ConfigDict, PrivateAttr
 
 load_dotenv()
 
+
 class AbstractIP(ABC):
     @abstractmethod
     def rotate_ip(self):
         pass
 
-# --------------
-# FREE PROXIES
-# --------------
+
+# -----------------
+# FREE IP MASKING
+# -----------------
 class TorIpRotator(BaseModel, AbstractIP):
     tor_ip: str = None
     local_ip: str = None
@@ -72,13 +74,13 @@ class TorIpRotator(BaseModel, AbstractIP):
 
     def __renew_tor_circuit(self) -> None:
         """Sends the NEWNYM signal to the Tor control port to request a new identity."""
-      
-          with Controller.from_port(port=self.tor_port) as controller:
-              controller.authenticate(password=self._tor_password)
-              controller.signal(Signal.NEWNYM)
-              self.tor_data["circuit_status"] = self.__extract_circuit_status(
-                  controller.get_info("circuit-status")
-              )
+
+        with Controller.from_port(port=self.tor_port) as controller:
+            controller.authenticate(password=self._tor_password)
+            controller.signal(Signal.NEWNYM)
+            self.tor_data["circuit_status"] = self.__extract_circuit_status(
+                controller.get_info("circuit-status")
+            )
 
     def __check_local_ip(self) -> str:
         response = httpx.get(self.ip_service_url)
@@ -106,18 +108,14 @@ class TorIpRotator(BaseModel, AbstractIP):
 
             self.used_ips.append(new_tor_ip)
             return new_tor_ip
-        raise RuntimeError(
-            "Max IP rotations reached. Failed to get a unique new IP."
-        )
+        raise RuntimeError("Max IP rotations reached. Failed to get a unique new IP.")
+
 
 def show_example():
     """Run this function in main()"""
     ip = TorIpRotator()
-  
+
     for i in range(0, 3):
-        print("-------------------------------------------------------------")
-        print("Local IP: ", ip.local_ip)
-        print(f"Rotated IP: ", ip.rotate_ip(unique=True))
-        print(f"IP seen by an external server: {ip.make_request_through_tor(ip.ip_service_url)}")
-        print(" ------------------------------------------------------------\n")
-  
+        print(f"Local IP: {ip.local_ip}")
+        print(f"Rotated IP: {ip.rotate_ip(unique=True)}")
+        print(f"IP seen by an external server: {ip.make_request_through_tor(ip.ip_service_url)}\n")
