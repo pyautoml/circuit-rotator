@@ -1,5 +1,5 @@
 <p>
-    <img style="display: block; margin: 0 auto;" src="https://github.com/pyautoml/rotating-proxy/blob/main/proxy_rotator_cover.png" alt="pyautoml checkpoint library module written in Python"/>
+    <img style="display: block; margin: 0 auto;" src="https://github.com/pyautoml/rotating-proxy/blob/main/circuit_rotator_cover.png" alt="pyautoml checkpoint library module written in Python"/>
 </p>
 
 # Information 🐍
