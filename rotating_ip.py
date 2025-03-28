@@ -11,22 +11,22 @@ from pydantic import BaseModel, Field, ConfigDict, PrivateAttr
 
 load_dotenv()
 
-class AbstractProxy(ABC):
+class AbstractIP(ABC):
     @abstractmethod
-    def rotate_proxy(self):
+    def rotate_ip(self):
         pass
 
 # --------------
 # FREE PROXIES
 # --------------
-class TorProxy(BaseModel, AbstractProxy):
+class TorIpRotator(BaseModel, AbstractIP):
     tor_ip: str = None
     local_ip: str = None
     tor_data: dict = {}
     max_rotations: int = 10
-    tor_mount_proxy: dict = {}
+    tor_mount_ip: dict = {}
     tor_port: Final[int] = int(os.getenv("PORT"))
-    used_proxies: List[str] = Field(default_factory=list)
+    used_ips: List[str] = Field(default_factory=list)
     ip_service_url: Final[str] = os.getenv("SERVICE_URL")
     _tor_password: str = PrivateAttr(default=os.getenv("PASSWORD"))
     max_circuit_dirtness: Final[int] = int(os.getenv("MAX_CIRCUIT_DIRTINESS", 10))
@@ -45,19 +45,19 @@ class TorProxy(BaseModel, AbstractProxy):
                 "Service URL is not set. Ensure the SERVICE_URL environment variable is configured."
             )
 
-        self.local_ip: str = self.__check_local_proxy()
-        self.tor_ip: str = self.__check_tor_proxy()
-        self.tor_mount_proxy: dict = {
+        self.local_ip: str = self.__check_local_ip()
+        self.tor_ip: str = self.__check_tor_ip()
+        self.tor_mount_ip: dict = {
             "http://": httpx.HTTPTransport(proxy=os.getenv("SOCKET")),
             "https://": httpx.HTTPTransport(proxy=os.getenv("SOCKET")),
         }
 
     def __repr__(self):
-        return f"TorProxy(tor_ip={self.tor_ip}, local_ip={self.local_ip}, max_rotations={self.max_rotations})"
+        return f"TorIpRotator(tor_ip={self.tor_ip}, local_ip={self.local_ip}, max_rotations={self.max_rotations})"
 
     def make_request_through_tor(self, url: str) -> str:
         try:
-            with httpx.Client(mounts=self.tor_mount_proxy) as client:
+            with httpx.Client(mounts=self.tor_mount_ip) as client:
                 response = client.get(url)
                 response.raise_for_status()
                 return response.text
@@ -80,44 +80,44 @@ class TorProxy(BaseModel, AbstractProxy):
                   controller.get_info("circuit-status")
               )
 
-    def __check_local_proxy(self) -> str:
+    def __check_local_ip(self) -> str:
         response = httpx.get(self.ip_service_url)
         response.raise_for_status()
         return response.text
 
-    def __check_tor_proxy(self) -> str:
+    def __check_tor_ip(self) -> str:
         return self.make_request_through_tor(url=self.ip_service_url)
 
-    def __generate_new_tor_proxy(self) -> str:
+    def __generate_new_tor_ip(self) -> str:
         self.__renew_tor_circuit()
-        return self.__check_tor_proxy()
+        return self.__check_tor_ip()
 
-    def rotate_proxy(self, unique: bool = False, prevent_ips_match: bool = True) -> str:
+    def rotate_ip(self, unique: bool = False, prevent_ips_match: bool = True) -> str:
         for _ in range(self.max_rotations):
-            new_tor_ip: str = self.__generate_new_tor_proxy()
+            new_tor_ip: str = self.__generate_new_tor_ip()
 
             if prevent_ips_match and new_tor_ip == self.local_ip:
                 continue
 
-            if unique and new_tor_ip in self.used_proxies:
-                if len(self.used_proxies) >= self.max_rotations:
+            if unique and new_tor_ip in self.used_ips:
+                if len(self.used_ips) >= self.max_rotations:
                     raise RuntimeError("All possible IPs have been exhausted.")
                 continue
 
-            self.used_proxies.append(new_tor_ip)
+            self.used_ips.append(new_tor_ip)
             return new_tor_ip
         raise RuntimeError(
-            "Max proxy rotations reached. Failed to get a unique new IP."
+            "Max IP rotations reached. Failed to get a unique new IP."
         )
 
 def show_example():
     """Run this function in main()"""
-    proxy = TorProxy()
+    ip = TorIpRotator()
   
     for i in range(0, 3):
         print("-------------------------------------------------------------")
-        print("Local IP: ", proxy.local_ip)
-        print(f"Rotated proxy: ", proxy.rotate_proxy(unique=True))
-        print(f"IP seen by an external server: {proxy.make_request_through_tor(proxy.ip_service_url)}")
+        print("Local IP: ", ip.local_ip)
+        print(f"Rotated IP: ", ip.rotate_ip(unique=True))
+        print(f"IP seen by an external server: {ip.make_request_through_tor(ip.ip_service_url)}")
         print(" ------------------------------------------------------------\n")
   
